@@ -1,0 +1,6 @@
+[submodule "ext/torchcubicspline"]
+	path = ext/torchcubicspline
+	url = git@github.com:qbecky/torchcubicspline.git
+[submodule "ext/geolab"]
+	path = ext/geolab
+	url = git@github.com:EPFL-LGG/geolab.git
