@@ -12,16 +12,16 @@ def export_snakes_to_json(
 ):
     '''
     Args:
-        pos_: torch.tensor/np.array of shape (n_ts, n_points 3)
+        pos_: torch.tensor/np.array of shape (n_ts, n_points, 3)
         g: torch.tensor/np.array of shape (n_ts, 7)
-        pos: torch.tensor/np.array of shape (n_ts, n_points 3)
+        pos: torch.tensor/np.array of shape (n_ts, n_points, 3)
         force_0: torch.tensor/np.array of shape (3,)
         torque_0: torch.tensor/np.array of shape (3,)
-        edges: torch.tensor/np.array of shape (M, 2)
+        edges: torch.tensor/np.array of shape (n_edges, 2)
         save_path: str
         weights_optim: dict of optimization weights
-        quantities_per_vertex: dict of lists of shapes (n_ts, N)
-        quantities_per_edge: dict of lists of shapes (n_ts, M)
+        quantities_per_vertex: dict of lists of shapes (n_ts, n_points)
+        quantities_per_edge: dict of lists of shapes (n_ts, n_edges)
         target_final_g: torch.tensor/np.array of shape (7,)
         target_checkpoints_g: torch.tensor/np.array of shape (n_checkpoints, 7)
         obstacle: an object of type ImplicitFunction
@@ -100,18 +100,18 @@ def export_meshes_to_json(
 ):
     '''
     Args:
-        pos_: torch.tensor/np.array of shape (n_ts, n_points 3)
+        pos_: torch.tensor/np.array of shape (n_ts, n_points, 3)
         g: torch.tensor/np.array of shape (n_ts, 7)
-        pos: torch.tensor/np.array of shape (n_ts, n_points 3)
+        pos: torch.tensor/np.array of shape (n_ts, n_points, 3)
         force_0: torch.tensor/np.array of shape (3,)
         torque_0: torch.tensor/np.array of shape (3,)
         edges: torch.tensor/np.array of shape (n_edges, 2)
-        faces: torch.tensor/np.array of shape (M, 3)
+        faces: torch.tensor/np.array of shape (n_faces, 3)
         save_path: str
         weights_optim: dict of optimization weights
-        quantities_per_vertex: dict of lists of shapes (n_ts, N)
+        quantities_per_vertex: dict of lists of shapes (n_ts, n_points)
         quantities_per_edge: dict of lists of shapes (n_ts, n_edges)
-        quantities_per_face: dict of lists of shapes (n_ts, M)
+        quantities_per_face: dict of lists of shapes (n_ts, n_faces)
         target_final_g: torch.tensor/np.array of shape (7,)
         target_checkpoints_g: torch.tensor/np.array of shape (n_checkpoints, 7)
         obstacle: an object of type ImplicitFunction
@@ -191,16 +191,16 @@ def export_graphs_to_json(
 ):
     '''
     Args:
-        pos_: torch.tensor/np.array of shape (n_ts, n_points 3)
+        pos_: torch.tensor/np.array of shape (n_ts, n_points, 3)
         g: torch.tensor/np.array of shape (n_ts, 7)
-        pos: torch.tensor/np.array of shape (n_ts, n_points 3)
+        pos: torch.tensor/np.array of shape (n_ts, n_points, 3)
         force_0: torch.tensor/np.array of shape (3,)
         torque_0: torch.tensor/np.array of shape (3,)
-        edges: torch.tensor/np.array of shape (M, 2)
+        edges: torch.tensor/np.array of shape (n_edges, 2)
         save_path: str
         weights_optim: dict of optimization weights
-        quantities_per_vertex: dict of lists of shapes (n_ts, N)
-        quantities_per_edge: dict of lists of shapes (n_ts, M)
+        quantities_per_vertex: dict of lists of shapes (n_ts, n_points)
+        quantities_per_edge: dict of lists of shapes (n_ts, n_edges)
         target_final_g: torch.tensor/np.array of shape (7,)
         target_checkpoints_g: torch.tensor/np.array of shape (n_checkpoints, 7)
         obstacle: an object of type ImplicitFunction
