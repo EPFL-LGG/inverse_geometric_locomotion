@@ -68,7 +68,7 @@ In alphabetical order,
 First, clone the repository recursively as follows
 
 ```bash
-git clone --recurse-submodules -j8 git@github.com:qbecky/inverse_geometric_locomotion.git
+git clone --recurse-submodules -j8 git@github.com:EPFL-LGG/inverse_geometric_locomotion.git
 ```
 
 Or if you already cloned the repository, run
