@@ -51,7 +51,7 @@ TORCH_DTYPE = torch.float64
 torch.set_default_dtype(TORCH_DTYPE)
 
 FLAGS = flags.FLAGS
-flags.DEFINE_integer("trial_number", 0, "The trial number for the experiment.")
+flags.DEFINE_integer("trial_number", None, "The trial number for the experiment.", lower_bound=0, upper_bound=4, required=True)
 
 def obj_and_grad(
     params, n_ts, n_cp, masses, a_weights, b_weights, 
