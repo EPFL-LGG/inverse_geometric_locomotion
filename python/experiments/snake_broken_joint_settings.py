@@ -22,7 +22,6 @@ def return_snake_broken_joint_experiment_settings(trial_number):
     setting_dict = {}
     
     setting_dict['maxiter'] = 1000
-    setting_dict['maxiter'] = 10
     setting_dict['n_cp'] = 15
     setting_dict['n_ts'] = 100
     setting_dict['rho'] = 1.0e-2

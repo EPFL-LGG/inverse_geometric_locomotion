@@ -22,7 +22,6 @@ def return_snake_straight_traj_experiment_settings(trial_number):
     setting_dict = {}
     
     setting_dict['maxiter'] = 500
-    setting_dict['maxiter'] = 10
     setting_dict['n_ts'] = 100
     setting_dict['n_cp'] = 20
     setting_dict['n_pts'] = 80
