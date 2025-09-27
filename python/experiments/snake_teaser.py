@@ -35,8 +35,10 @@ import time
 
 from geometry_io import export_snakes_to_json
 from objectives import pass_checkpoints, grad_pass_checkpoints
+from objectives import compare_last_translation, grad_compare_last_translation
 from objectives import energy_path, grad_energy_path
 from objectives import avoid_implicit, grad_avoid_implicit
+from objectives import smooth_avoid_implicit, grad_smooth_avoid_implicit
 from obstacle_implicits import generate_siggraph_implicit, TranslateImplicit
 from scipy.optimize import minimize, Bounds
 from snake_teaser_settings import return_snake_teaser_experiment_settings
@@ -49,7 +51,7 @@ TORCH_DTYPE = torch.float64
 torch.set_default_dtype(TORCH_DTYPE)
 
 FLAGS = flags.FLAGS
-flags.DEFINE_integer("trial_number", None, "The trial number for the experiment.", lower_bound=0, upper_bound=0, required=True)
+flags.DEFINE_integer("trial_number", None, "The trial number for the experiment.", lower_bound=0, upper_bound=1, required=True)
 
 def obj_and_grad_params(
     params, n_steps, gt, masses, a_weights, b_weights, 
@@ -122,8 +124,10 @@ def fun_obj_grad_g(gs, pos_, gt, masses, a_weights, b_weights, w_fit_scaled, w_e
         grad_g: torch.tensor of shape (n_ts, 7)
         grad_pos_: torch.tensor of shape (n_ts, n_points, 3)
     '''
-    obj_fit = pass_checkpoints(gs, gt)
-    grad_fit_g = grad_pass_checkpoints(gs, gt)
+    # obj_fit = pass_checkpoints(gs, gt)
+    # grad_fit_g = grad_pass_checkpoints(gs, gt)
+    obj_fit = pass_checkpoints(gs, gt[:-1]) + compare_last_translation(gs, gt[-1])
+    grad_fit_g = grad_pass_checkpoints(gs, gt[:-1]) + grad_compare_last_translation(gs, gt[-1])
     grad_fit_pos_ = np.zeros_like(pos_)
     
     if w_energy_scaled == 0.0:
@@ -135,14 +139,15 @@ def fun_obj_grad_g(gs, pos_, gt, masses, a_weights, b_weights, w_fit_scaled, w_e
     if w_obs_scaled == 0.0:
         obj_obs, grad_obs_g, grad_obs_pos_ = 0.0, 0.0, 0.0
     else:
-        obj_obs = avoid_implicit(pos_, gs, obstacle)
-        grad_obs_g, grad_obs_pos_ = grad_avoid_implicit(pos_, gs, obstacle)
+        beta = 1.0 / (1.0e-2 * 1.4) # The smaller the beta, the larger the influence of the obstacle
+        obj_obs = smooth_avoid_implicit(pos_, gs, obstacle, beta=beta)
+        grad_obs_g, grad_obs_pos_ = grad_smooth_avoid_implicit(pos_, gs, obstacle, beta=beta)
 
-    obj = w_obs_scaled * obj_fit + w_energy_scaled * obj_energy + w_obs_scaled * obj_obs
+    obj = w_fit_scaled * obj_fit + w_energy_scaled * obj_energy + w_obs_scaled * obj_obs
     grad_g = w_fit_scaled * grad_fit_g + w_energy_scaled * grad_energy_g + w_obs_scaled * grad_obs_g
-    grad_pos = w_fit_scaled * grad_fit_pos_ + w_energy_scaled * grad_energy_pos_ + w_obs_scaled * grad_obs_pos_
+    grad_pos_ = w_fit_scaled * grad_fit_pos_ + w_energy_scaled * grad_energy_pos_ + w_obs_scaled * grad_obs_pos_
 
-    return obj, grad_g, grad_pos
+    return obj, grad_g, grad_pos_
 
 class OptimizationBookkeeper:
     def __init__(
@@ -212,18 +217,16 @@ def main(_):
     rho, eps, snake_length, close_snake_gait = settings_dict['rho'], settings_dict['eps'], settings_dict['snake_length'], settings_dict['close_gait']
     w_fit, w_obs, w_energy = settings_dict['w_fit'], settings_dict['w_obs'], settings_dict['w_energy']
     gt = np.array(settings_dict['gt'])
-    init_perturb_magnitude = settings_dict['init_perturb_magnitude']
     maxiter = settings_dict['maxiter']
     angle_rot, x_obstacle_offset, x_last_target_offset = settings_dict['angle_rot'], settings_dict['x_obstacle_offset'], settings_dict['x_last_target_offset']
     translate_implicit, scale_implicit = torch.tensor(settings_dict['translate_implicit']), torch.tensor(settings_dict['scale_implicit'])
+    intersection_sharpness = torch.tensor(settings_dict['intersection_sharpness'])
+    cps = torch.tensor(settings_dict["cps"])
 
     total_mass = rho * snake_length
     w_fit_scaled = w_fit / (snake_length ** 2)
     w_obs_scaled = w_obs / (2.0 * snake_length ** 2)
     w_energy_scaled = w_energy / (total_mass * snake_length ** 2)
-
-    # Useful for generating the discretized snake
-    ts_cp = torch.linspace(0.0, 1.0, n_cp)
 
     def fun_anisotropy_dir(x):
         tangents = torch.zeros_like(x)
@@ -236,15 +239,6 @@ def main(_):
     ###########################################################################
     ## GENERATE THE GEOMETRY
     ###########################################################################
-
-    center = torch.tensor([0.1, 0.15])
-    radius = 1.5
-    cps = torch.zeros(n_cp, 3)
-    cps[:, 0] = center[0] + radius * torch.cos(8 * np.pi * ts_cp[:n_cp+1-close_snake_gait])
-    cps[:, 1] = center[1] + radius * torch.sin(8 * np.pi * ts_cp[:n_cp+1-close_snake_gait])
-    cps[:, 2] = init_wavelength
-    torch.manual_seed(0)
-    cps += init_perturb_magnitude * torch.randn(cps.shape)
 
     # example_pos_ serves providing the expected shape of pos_
     example_pos_ = torch.zeros(size=(n_ts, n_points_snake, 3))
@@ -271,7 +265,7 @@ def main(_):
     ###########################################################################
     
     translation_siggraph = torch.tensor([- translate_implicit[0] + scale_implicit[0] + x_obstacle_offset, 0.0, 0.0])
-    siggraph_obstacle = generate_siggraph_implicit(angle_rotation=angle_rot, translation=translate_implicit, scale=scale_implicit)
+    siggraph_obstacle = generate_siggraph_implicit(angle_rotation=angle_rot, translation=translate_implicit, scale=scale_implicit, intersection_sharpness=intersection_sharpness)
 
     translation_siggraph = torch.tensor([- translate_implicit[0] + scale_implicit[0] + x_obstacle_offset, 0.0, 0.0])
     obstacle = TranslateImplicit(siggraph_obstacle, translation_siggraph)
@@ -320,7 +314,7 @@ def main(_):
     start_time = time.time()
     result = minimize(
         obj_and_grad_params_scipy, params0, bounds=bnds, jac=True, 
-        method='L-BFGS-B', options={'disp': True, 'maxiter': maxiter, 'ftol': 1.0e-10, 'gtol': 1.0e-6},
+        method='L-BFGS-B', options={'disp': True, 'maxiter': maxiter, 'ftol': 1.0e-6, 'gtol': 1.0e-4},
         callback=optim_cb,
     )
     optim_duration = time.time() - start_time

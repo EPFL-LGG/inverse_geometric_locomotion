@@ -994,6 +994,65 @@ def grad_avoid_implicit(pos_: torch.Tensor, g: torch.Tensor, implicit: ImplicitF
 
     obj = avoid_implicit(pos_, g_torch, implicit)
     obj.backward(torch.ones_like(obj))
+
+    # print(pos_torch_.grad.shape)
+    # print(g_torch.grad.shape)
+    
+    if g_torch.grad is None:
+        grad_g = torch.zeros_like(g_torch)
+    else:
+        grad_g = g_torch.grad
+    if pos_torch_.grad is None:
+        grad_pos_ = torch.zeros_like(pos_torch_)
+    else:
+        grad_pos_ = pos_torch_.grad
+    return grad_g.numpy(), grad_pos_.numpy()
+
+def smooth_avoid_implicit(pos_: torch.Tensor, g: torch.Tensor, implicit: ImplicitFunction, beta: float=1.0):
+    '''Compute the avoidance of the path
+    
+    Args:
+        pos_: (n_steps, n_points, 3) array of the positions of the system
+        g: (n_steps, 7) tensor reprenting the registration per time step
+        implicit (instance of an ImplicitFunction): the obstacle to avoid
+        beta: scalar representing the beta parameter for the softplus function
+        
+    Returns:
+        scalar representing the objective
+    '''
+    
+    if not isinstance(pos_, torch.Tensor):
+        pos_ = torch.tensor(pos_)
+    if not isinstance(g, torch.Tensor):
+        g = torch.tensor(g)
+        
+    pos = vmap_euc_transform_torch(g, pos_)
+    sdfs = implicit.evaluate_implicit_function(pos.reshape(-1, 3))
+    obj = torch.mean(torch.nn.functional.softplus(-sdfs, beta=beta))
+    return obj
+
+def grad_smooth_avoid_implicit(pos_: torch.Tensor, g: torch.Tensor, implicit: ImplicitFunction, beta: float=1.0):
+    '''Compute the avoidance of the path
+    
+    Args:
+        pos_: (n_steps, n_points, 3) array of the positions of the system
+        g: (n_steps, 7) tensor reprenting the registration per time step
+        implicit (instance of an ImplicitFunction): the obstacle to avoid
+        beta: scalar representing the beta parameter for the softplus function
+        
+    Returns:
+        (n_steps, 7) array representing the gradient of the objective with respect to the rigid transformations
+        (n_steps, n_points, 3) array representing the gradient of the objective with respect to the unregistered shapes
+    '''
+        
+    pos_torch_ = torch.tensor(pos_)
+    pos_torch_.requires_grad = True
+    
+    g_torch = torch.tensor(g)
+    g_torch.requires_grad = True
+
+    obj = smooth_avoid_implicit(pos_, g_torch, implicit, beta=beta)
+    obj.backward(torch.ones_like(obj))
     
     if g_torch.grad is None:
         grad_g = torch.zeros_like(g_torch)

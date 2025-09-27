@@ -341,7 +341,6 @@ class CombineImplicits(ImplicitFunction):
         self.slices_per_implicit_ub = self.slices_per_implicit[1:]
         
     def update_parameters(self, new_params):
-        self.check_params(new_params)
         for imp, slb, sub in zip(self.list_implicits, self.slices_per_implicit_lb, self.slices_per_implicit_ub):
             imp.update_parameters(new_params[slb:sub])
 
@@ -388,16 +387,76 @@ class IntersectionImplicit(CombineImplicits):
         ser['name'] = 'IntersectionImplicit'
         return ser
     
+class SmoothUnionImplicit(CombineImplicits):
+    def __init__(self, list_implicits, union_sharpness):
+        '''
+        Args:
+            list_implicits (list of objects of class ImplicitFunction): the implicits to combine
+            union_sharpness (torch tensor of shape ()): the smoothness parameter. The larger union_sharpness, the closer to a real union.
+        '''
+        super().__init__(list_implicits)
+        self.union_sharpness = union_sharpness
+        self.n_params = self.n_params + 1
+        self.update_parameters(torch.cat([self.params, union_sharpness.reshape(-1,)]))
+
+    def update_parameters(self, new_params):
+        self.check_params(new_params)
+        self.params = new_params
+        super().update_parameters(new_params[:-1])
+        self.union_sharpness = new_params[-1]
+
+    def evaluate_implicit_function(self, pos):
+        all_implicits = torch.stack([imp.evaluate_implicit_function(pos) for imp in self.list_implicits], dim=1)
+        return - torch.logsumexp(- self.union_sharpness * all_implicits, dim=1) / self.union_sharpness
+
+    def serialize(self):
+        ser = super().serialize()
+        ser['name'] = 'SmoothUnionImplicit'
+        ser['union_sharpness'] = self.union_sharpness
+        return ser
+    
+class SmoothIntersectionImplicit(CombineImplicits):
+
+    def __init__(self, list_implicits, intersection_sharpness):
+        '''
+        Args:
+            list_implicits (list of objects of class ImplicitFunction): the implicits to combine
+            intersection_sharpness (torch tensor of shape ()): the smoothness parameter. The larger intersection_sharpness, the closer to a real intersection.
+        '''
+        super().__init__(list_implicits)
+        self.intersection_sharpness = intersection_sharpness
+        self.n_params = self.n_params + 1
+        self.update_parameters(torch.cat([self.params, intersection_sharpness.reshape(-1,)]))
+
+    def update_parameters(self, new_params):
+        self.check_params(new_params)
+        self.params = new_params
+        super().update_parameters(new_params[:-1])
+        self.intersection_sharpness = new_params[-1]
+
+    def evaluate_implicit_function(self, pos):
+        all_implicits = torch.stack([imp.evaluate_implicit_function(pos) for imp in self.list_implicits], dim=1)
+        return torch.logsumexp(self.intersection_sharpness * all_implicits, dim=1) / self.intersection_sharpness
+
+    def serialize(self):
+        ser = super().serialize()
+        ser['name'] = 'SmoothIntersectionImplicit'
+        ser['intersection_sharpness'] = self.intersection_sharpness
+        return ser
+    
     
 ############################################
 # FAMILIES OF IMPLICITS
 ############################################
 
-def generate_siggraph_implicit(angle_rotation=torch.pi/5.0, translation=torch.tensor([0.0, 0.0, 0.0]), scale=torch.tensor([1.0, 1.0, 1.0])):
-    '''Generates a family of implicits for the SIGGRAPH 2022 paper'''
-    sphere_sig1 = SphereImplicit(torch.tensor([0.0, 0.0, 0.0, 1.0]))
-    sphere_sig2 = SphereImplicit(torch.tensor([0.0, 2.0, 0.0, 2.2]))
-    intersection_implicit_sig = IntersectionImplicit([sphere_sig1, sphere_sig2])
+def generate_siggraph_implicit(angle_rotation=torch.pi/5.0, translation=torch.tensor([0.0, 0.0, 0.0]), scale=torch.tensor([1.0, 1.0, 1.0]), intersection_sharpness=None):
+    '''Generates a family of implicits for the SIGGRAPH logo'''
+    sphere_sig1 = SphereSquareImplicit(torch.tensor([0.0, 0.0, 0.0, 1.0]))
+    sphere_sig2 = SphereSquareImplicit(torch.tensor([0.0, 2.0, 0.0, 2.2]))
+    if intersection_sharpness is None:
+        intersection_implicit_sig = IntersectionImplicit([sphere_sig1, sphere_sig2])
+    else:
+        intersection_implicit_sig = SmoothIntersectionImplicit([sphere_sig1, sphere_sig2], intersection_sharpness)
     intersection_scaled_implicit_sig = ScaleImplicit(intersection_implicit_sig, scale)
     rotate_implicit1 = RotateImplicit(intersection_scaled_implicit_sig, torch.tensor([0.0, 0.0, angle_rotation]))
     rotate_implicit2 = RotateImplicit(intersection_scaled_implicit_sig, torch.tensor([0.0, 0.0, angle_rotation + torch.pi]))

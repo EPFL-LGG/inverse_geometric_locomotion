@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from utils import axis_angle_to_quaternion
 
-def return_turtle_fixed_arms_experiment_settings(trial_number):
+def return_turtle_experiment_settings(trial_number):
     '''
     Args:
         trial_number: int, the experiment number

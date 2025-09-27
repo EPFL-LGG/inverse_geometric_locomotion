@@ -2,7 +2,7 @@
 
 In a terminal, with the conda environment turned on, run the following command line:
 
-python turtle_fixed_arms.py --trial_number=0
+python turtle.py --trial_number=0
 """
 
 import sys as _sys
@@ -18,7 +18,7 @@ path_to_python_scripts = os.path.join(split[0], "inverse_geometric_locomotion/py
 path_to_cubic_splines = os.path.join(split[0], "inverse_geometric_locomotion/ext/torchcubicspline/")
 path_to_notifications = os.path.join(split[0], "inverse_geometric_locomotion/notebooks/notifications/")
 path_to_output = os.path.join(split[0], "inverse_geometric_locomotion/output/")
-path_to_output_turtle = os.path.join(path_to_output, "turtle_fixed_arms/")
+path_to_output_turtle = os.path.join(path_to_output, "turtle/")
 
 if not os.path.exists(path_to_output_turtle):
     os.makedirs(path_to_output_turtle)
@@ -39,7 +39,7 @@ from objectives import compare_last_registration, grad_compare_last_registration
 from objectives import energy_path, grad_energy_path
 from objectives import penalize_upper_bound
 from scipy.optimize import minimize, Bounds
-from turtle_fixed_arms_settings import return_turtle_fixed_arms_experiment_settings
+from turtle_settings import return_turtle_experiment_settings
 from purcell_shapes import turtle_fixed_arms_generator_cubic_splines, generate_control_points, turtle_generate_fun_anisotropy_dir
 from step_backward import multiple_steps_backward_pos_
 from step_forward import multiple_steps_forward
@@ -218,7 +218,7 @@ def main(_):
     trial_number = FLAGS.trial_number
     tag_experiment = "_{:02d}".format(trial_number)
 
-    settings_dict = return_turtle_fixed_arms_experiment_settings(trial_number)
+    settings_dict = return_turtle_experiment_settings(trial_number)
     n_pts_per_segment, n_cp, n_ts = settings_dict["n_pts_per_segment"], settings_dict["n_cp"], settings_dict["n_ts"]
     n_hinges = 10
     n_points_turtle = n_hinges + 9 * n_pts_per_segment
@@ -285,7 +285,7 @@ def main(_):
         pos_, tangents_, masses, a_weights, b_weights, force_0, torque_0
     )
 
-    save_path = os.path.join(path_to_output_turtle, "turtle_fixed_arms_init.json")
+    save_path = os.path.join(path_to_output_turtle, "turtle_init.json")
 
     export_snakes_to_json(
         pos_, g, pos, force_0, torque_0, save_path, edges=None,
@@ -351,7 +351,7 @@ def main(_):
         pos_opt_, tangents_opt_, masses, a_weights, b_weights, force_0, torque_0, options=options
     )
 
-    save_path_opt = os.path.join(path_to_output_turtle, "turtle_fixed_arms_opt{}.json".format(tag_experiment))
+    save_path_opt = os.path.join(path_to_output_turtle, "turtle_opt{}.json".format(tag_experiment))
 
     weights_optim = {
         'w_fit': w_fit,
