@@ -131,9 +131,9 @@ def fun_obj_grad_g(gs, pos_, gt, masses, a_weights, b_weights, fun_anisotropy_di
 
     obj = w_fit_scaled * obj_fit + w_energy_scaled * obj_energy
     grad_g = w_fit_scaled * grad_fit_g + w_energy_scaled * grad_energy_g
-    grad_pos = w_fit_scaled * grad_fit_pos_ + w_energy_scaled * grad_energy_pos_
+    grad_pos_ = w_fit_scaled * grad_fit_pos_ + w_energy_scaled * grad_energy_pos_
 
-    return obj, grad_g, grad_pos
+    return obj, grad_g, grad_pos_
 
 class OptimizationBookkeeper:
     def __init__(
